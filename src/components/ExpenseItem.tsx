@@ -1,7 +1,18 @@
 import React from 'react';
-import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Expense, CATEGORY_ICONS } from '@/types/expense';
 import { GlassCard } from './GlassCard';
 import { LiquidGlassColors, Spacing } from '@/constants/theme';
@@ -20,6 +31,9 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
   onEdit,
   onDelete,
 }) => {
+  const [photoViewerVisible, setPhotoViewerVisible] = React.useState(false);
+  const { height: windowHeight } = useWindowDimensions();
+
   // Queda algo como "15 oct"
   const formattedDate = new Date(expense.date).toLocaleDateString('es-ES', {
     day: '2-digit',
@@ -34,6 +48,7 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
   }).format(expense.amount);
 
   const confirmDelete = () => {
+    // Solicita confirmación antes de borrar de forma permanente el gasto.
     Alert.alert(
       'Eliminar gasto',
       '¿Seguro que deseas eliminar este gasto? Esta acción no se puede deshacer.',
@@ -43,6 +58,7 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
           text: 'Eliminar',
           style: 'destructive',
           onPress: () => {
+            // Informa explícitamente si la eliminación no pudo persistirse.
             void onDelete(expense.id).catch((error: unknown) => {
               console.error('Error al eliminar el gasto', error);
               Alert.alert('Error', 'No se pudo eliminar el gasto. Intenta de nuevo.');
@@ -79,11 +95,13 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
                 </Text>
               )}
               {expense.photoUri && (
-                <Image
-                  accessibilityLabel="Foto adjunta al gasto"
-                  source={{ uri: expense.photoUri }}
-                  style={styles.photo}
-                />
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  onPress={() => setPhotoViewerVisible(true)}
+                  style={styles.viewPhotoButton}
+                >
+                  <Text style={styles.viewPhotoText}>Ver foto</Text>
+                </TouchableOpacity>
               )}
             </View>
           </View>
@@ -109,6 +127,57 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
           </TouchableOpacity>
         </View>
       </GlassCard>
+      {expense.photoUri && (
+        <Modal
+          visible={photoViewerVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPhotoViewerVisible(false)}
+        >
+          <View style={styles.photoViewer}>
+            <LinearGradient
+              colors={['#FFF5F9', '#FFE8F0', '#FFF9FC']}
+              style={StyleSheet.absoluteFill}
+            />
+            <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />
+            <View pointerEvents="none" style={[styles.photoOrb, styles.photoOrbPink]} />
+            <View pointerEvents="none" style={[styles.photoOrb, styles.photoOrbPurple]} />
+            <SafeAreaView style={styles.photoViewerContent}>
+              <View style={styles.photoViewerHeader}>
+                <View style={styles.photoViewerTitleContainer}>
+                  <Text style={styles.photoViewerTitle}>Foto del gasto</Text>
+                  <Text style={styles.photoViewerSubtitle}>
+                    {CATEGORY_ICONS[expense.category]} {expense.category}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar foto"
+                  onPress={() => setPhotoViewerVisible(false)}
+                  style={styles.closePhotoButton}
+                >
+                  <Text style={styles.closePhotoText}>Cerrar</Text>
+                </TouchableOpacity>
+              </View>
+              <GlassCard intensity={35} style={styles.photoCard}>
+                <Image
+                  accessibilityLabel="Foto adjunta al gasto"
+                  source={{ uri: expense.photoUri }}
+                  resizeMode="contain"
+                  style={[styles.fullPhoto, { height: Math.min(windowHeight * 0.58, 640) }]}
+                />
+              </GlassCard>
+              {expense.description ? (
+                <Text style={styles.photoDescription} numberOfLines={2}>
+                  {expense.description}
+                </Text>
+              ) : (
+                <Text style={styles.photoAmount}>{formattedAmount}</Text>
+              )}
+            </SafeAreaView>
+          </View>
+        </Modal>
+      )}
     </Animated.View>
   );
 };
@@ -153,11 +222,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: LiquidGlassColors.glassTextSecondary,
   },
-  photo: {
-    width: 48,
-    height: 36,
-    borderRadius: Spacing.one,
+  viewPhotoButton: {
+    alignSelf: 'flex-start',
     marginTop: Spacing.one,
+    paddingVertical: Spacing.one,
+  },
+  viewPhotoText: {
+    color: LiquidGlassColors.primary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   rightSection: {
     alignItems: 'flex-end',
@@ -193,6 +266,89 @@ const styles = StyleSheet.create({
   deleteText: {
     color: LiquidGlassColors.secondary,
     fontSize: 13,
+    fontWeight: '600',
+  },
+  photoViewer: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 245, 249, 0.45)',
+  },
+  photoViewerContent: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
+  },
+  photoOrb: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  photoOrbPink: {
+    width: 220,
+    height: 220,
+    top: '12%',
+    left: '-18%',
+    backgroundColor: 'rgba(255, 107, 157, 0.2)',
+  },
+  photoOrbPurple: {
+    width: 260,
+    height: 260,
+    right: '-22%',
+    bottom: '8%',
+    backgroundColor: 'rgba(196, 69, 105, 0.14)',
+  },
+  photoViewerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.three,
+  },
+  photoViewerTitleContainer: {
+    flex: 1,
+    marginRight: Spacing.two,
+  },
+  photoViewerTitle: {
+    color: LiquidGlassColors.glassText,
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  photoViewerSubtitle: {
+    color: LiquidGlassColors.glassTextSecondary,
+    fontSize: 14,
+    marginTop: Spacing.one,
+  },
+  photoCard: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 640,
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
+  },
+  photoDescription: {
+    color: LiquidGlassColors.glassText,
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: Spacing.three,
+  },
+  photoAmount: {
+    color: LiquidGlassColors.glassTextSecondary,
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: Spacing.three,
+  },
+  fullPhoto: {
+    width: '100%',
+  },
+  closePhotoButton: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: LiquidGlassColors.glassBorder,
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
+  },
+  closePhotoText: {
+    color: LiquidGlassColors.glassText,
+    fontSize: 14,
     fontWeight: '600',
   },
 });

@@ -12,26 +12,33 @@ import { Expense } from '@/types/expense';
 
 // Pantalla principal: total del mes, lista de gastos y el boton + para agregar
 export default function HomeScreen() {
-  const { getCurrentMonthExpenses, isLoading, deleteExpense } = useExpenses();
+  const { getCurrentMonthExpenses, isLoading, deleteExpense, selectedDate } = useExpenses();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [sortByHighest, setSortByHighest] = useState(false);
+  // La lista cambia entre ordenar por monto descendente y fecha más reciente.
   const expenses = getCurrentMonthExpenses().sort((first, second) =>
     sortByHighest
       ? second.amount - first.amount || second.date.getTime() - first.date.getTime()
       : second.date.getTime() - first.date.getTime()
   );
 
+  const formattedSelectedMonth = selectedDate.toLocaleDateString('es-ES', {
+    month: 'long',
+    year: 'numeric',
+  });
+//crear nuevo gasto
   const openNewExpense = () => {
     setEditingExpense(null);
     setModalVisible(true);
   };
-
+//editar gasto
   const openEditExpense = (expense: Expense) => {
+    // El mismo formulario sirve para crear y editar, precargado con este gasto.
     setEditingExpense(expense);
     setModalVisible(true);
   };
-
+//cerrar modal de gasto
   const closeExpenseModal = () => {
     setModalVisible(false);
     setEditingExpense(null);
@@ -57,6 +64,7 @@ export default function HomeScreen() {
 
             <TouchableOpacity
               accessibilityRole="button"
+              // El control alterna entre el orden habitual y el monto más alto.
               onPress={() => setSortByHighest((current) => !current)}
               style={styles.sortButton}
             >
@@ -72,12 +80,14 @@ export default function HomeScreen() {
                 <ActivityIndicator size="large" color={LiquidGlassColors.primary} />
               </View>
             ) : expenses.length === 0 ? (
-              /* Si no hay gastos este mes mostramos un mensaje en vez de la lista */
+              /* Si no hay gastos en este mes mostramos un mensaje personalizado */
               <View style={styles.emptyState}>
                 <Text style={styles.emptyIcon}>💸</Text>
-                <Text style={styles.emptyTitle}>No hay gastos registrados</Text>
+                <Text style={styles.emptyTitle}>
+                  No hay gastos en {formattedSelectedMonth}
+                </Text>
                 <Text style={styles.emptyText}>
-                  Presiona el botón + para agregar tu primer gasto
+                  Presiona el botón + para registrar un gasto o selecciona otro mes
                 </Text>
               </View>
             ) : (

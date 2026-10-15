@@ -17,7 +17,8 @@ Los alumnos comenzarán con esta versión base (sin persistencia de datos) y ava
 - Ordenar los gastos del mes por monto más alto o por fecha más reciente.
 - Validar montos positivos con hasta dos decimales y categorías obligatorias.
 - Aceptar descripciones opcionales de hasta 400 caracteres, con letras, números y espacios.
-- Adjuntar una foto a un gasto y elegir su fecha.
+- Adjuntar una foto a un gasto desde la cámara o la galería; abrirla en un visor modal.
+- Elegir la fecha del gasto, sin permitir fechas futuras.
 
 ##  Instalación y Configuración
 

@@ -47,6 +47,7 @@ export async function insertExpense(db:SQLiteDatabase, expense:Expense):Promise<
 }
 
 export async function updateExpense(db: SQLiteDatabase, expense: Expense): Promise<void> {
+    // Actualiza todos los campos editables conservando el identificador del gasto.
     await db.runAsync(
         'UPDATE expenses SET amount = ?, category = ?, date = ?, description = ?, photo_uri = ? WHERE id = ?',
         expense.amount,
@@ -59,5 +60,6 @@ export async function updateExpense(db: SQLiteDatabase, expense: Expense): Promi
 }
 
 export async function deleteExpense(db: SQLiteDatabase, id: string): Promise<void> {
+    // El parámetro enlazado evita interpolar el identificador dentro del SQL.
     await db.runAsync('DELETE FROM expenses WHERE id = ?', id);
 }

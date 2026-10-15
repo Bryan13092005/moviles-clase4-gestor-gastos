@@ -26,6 +26,16 @@ interface AddExpenseModalProps {
   expense?: Expense;
 }
 
+const getTodayAtMidnight = () => {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+};
+
+const getEndOfToday = () => {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+};
+
 // Modal que sube desde abajo para registrar un gasto.
 // Para poder agregarlo hacen falta el monto y la categoria; la descripcion es opcional.
 export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
@@ -33,7 +43,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   onClose,
   expense,
 }) => {
-  const { addExpense, updateExpense } = useExpenses();
+  const { addExpense, updateExpense, selectedDate: activeSelectedDate } = useExpenses();
   // El monto es string porque asi trabaja el TextInput; se pasa a numero al guardar
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<Category | null>(null);
@@ -42,27 +52,64 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | undefined>();
 
+  const getInitialDate = () => {
+    const now = new Date();
+    if (
+      activeSelectedDate.getMonth() === now.getMonth() &&
+      activeSelectedDate.getFullYear() === now.getFullYear()
+    ) {
+      return now;
+    }
+    const lastDay = new Date(
+      activeSelectedDate.getFullYear(),
+      activeSelectedDate.getMonth() + 1,
+      0
+    ).getDate();
+    const day = Math.min(now.getDate(), lastDay);
+    const candidate = new Date(
+      activeSelectedDate.getFullYear(),
+      activeSelectedDate.getMonth(),
+      day
+    );
+    return candidate > now ? now : candidate;
+  };
+
   useEffect(() => {
     if (!visible) return;
 
+    // Al editar se cargan los datos existentes; al crear se inicializa con la fecha correspondiente.
     setAmount(expense ? expense.amount.toFixed(2) : '');
     setCategory(expense?.category ?? null);
     setDescription(expense?.description ?? '');
-    setDate(expense ? new Date(expense.date) : new Date());
+    setDate(expense ? new Date(expense.date) : getInitialDate());
     setShowDatePicker(false);
     setPhotoUri(expense?.photoUri);
-  }, [visible, expense]);
+  }, [visible, expense, activeSelectedDate]);
 
   const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     if (Platform.OS === 'android') setShowDatePicker(false);
-    if (event.type === 'set' && selectedDate) setDate(selectedDate);
+    if (event.type !== 'set' || !selectedDate) return;
+
+    // El picker limita la selección a hoy, y este control evita aceptar una fecha futura.
+    const selectedDay = new Date(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate()
+    );
+    if (selectedDay > getTodayAtMidnight()) {
+      Alert.alert('Fecha no válida', 'La fecha del gasto no puede ser posterior a hoy.');
+      return;
+    }
+    setDate(selectedDate);
   };
 
   const handleAmountChange = (value: string) => {
+    // Permite solo dígitos y un separador decimal con hasta dos posiciones.
     if (/^\d*(?:[.,]\d{0,2})?$/.test(value)) setAmount(value);
   };
 
   const handleDescriptionChange = (value: string) => {
+    // La descripción admite letras con tildes, números y espacios, hasta 400 caracteres.
     setDescription(
       value.replace(/[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ ]/g, '').slice(0, 400)
     );
@@ -72,15 +119,20 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     setAmount('');
     setCategory(null);
     setDescription('');
-    setDate(new Date());
+    setDate(getInitialDate());
     setShowDatePicker(false);
     setPhotoUri(undefined);
   };
 
   // async porque ahora hay que esperar a que el gasto se guarde en el telefono
   const handleSubmit = async () => {
+    // La categoría y el monto son obligatorios tanto al crear como al editar.
     if (!category) {
       Alert.alert('Categoría requerida', 'Selecciona una categoría para guardar el gasto.');
+      return;
+    }
+    if (new Date(date.getFullYear(), date.getMonth(), date.getDate()) > getTodayAtMidnight()) {
+      Alert.alert('Fecha no válida', 'La fecha del gasto no puede ser posterior a hoy.');
       return;
     }
 
@@ -249,6 +301,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                         mode="date"
                         display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                         onChange={handleDateChange}
+                        maximumDate={getEndOfToday()}
                       />
                       {Platform.OS === 'ios' && (
                         <TouchableOpacity

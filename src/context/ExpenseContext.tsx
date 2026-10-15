@@ -18,6 +18,15 @@ interface ExpenseContextType {
   deleteExpense: (id: string) => Promise<void>;
   getMonthlyTotal: () => number;
   getCurrentMonthExpenses: () => Expense[];
+  // Funcionalidad para seleccionar y navegar entre meses
+  selectedDate: Date;
+  setSelectedDate: (date: Date) => void;
+  goToPreviousMonth: () => void;
+  goToNextMonth: () => void;
+  resetToCurrentMonth: () => void;
+  isCurrentMonth: boolean;
+  getSelectedMonthExpenses: () => Expense[];
+  hasExpensesInMonth: (month: number, year: number) => boolean;
 }
  
 // Arranca en undefined para poder avisar si alguien usa el hook sin Provider
@@ -30,7 +39,8 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   const db = useSQLiteContext();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
- 
+  const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+
   // Se ejecuta al montar el Provider (al abrir la app).
   // db va en las dependencias porque se usa adentro; no cambia mientras la app esta abierta.
   useEffect(() => {
@@ -46,27 +56,37 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
         setIsLoading(false);
       }
     };
- 
+
     cargarGastos();
   }, [db]);
- 
+
   const addExpense = async (expense: Omit<Expense, 'id'>) => {
     // Timestamp + algo aleatorio para que dos gastos seguidos no repitan id
     const newExpense: Expense = {
       ...expense,
       id: Date.now().toString() + Math.random().toString(36).slice(2, 11),
     };
- 
+
     // Primero se inserta en la base y DESPUES se actualiza la pantalla.
     // Si el INSERT falla, lanza el error y el estado no cambia.
     // Solo se escribe una fila: ya no hace falta reescribir toda la lista.
     await insertExpense(db, newExpense);
- 
+
     // Va al principio para que el ultimo gasto salga arriba
     setExpenses((prev) => [newExpense, ...prev]);
+
+    // Si el nuevo gasto es de otro mes, actualizamos selectedDate a ese mes para mostrarlo
+    const expenseDate = new Date(newExpense.date);
+    if (
+      expenseDate.getMonth() !== selectedDate.getMonth() ||
+      expenseDate.getFullYear() !== selectedDate.getFullYear()
+    ) {
+      setSelectedDate(expenseDate);
+    }
   };
 
   const updateExpense = async (expense: Expense) => {
+    // Persistir primero evita mostrar cambios que la base de datos no guardó.
     await updateExpenseInDatabase(db, expense);
     setExpenses((prev) =>
       prev.map((current) => (current.id === expense.id ? expense : current))
@@ -74,31 +94,70 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const deleteExpense = async (id: string) => {
+    // La lista se actualiza solo después de eliminar el registro de SQLite.
     await deleteExpenseFromDatabase(db, id);
     setExpenses((prev) => prev.filter((expense) => expense.id !== id));
   };
- 
-  const getCurrentMonthExpenses = () => {
+
+  const isCurrentMonth = (() => {
     const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
- 
+    return (
+      selectedDate.getMonth() === now.getMonth() &&
+      selectedDate.getFullYear() === now.getFullYear()
+    );
+  })();
+
+  const goToPreviousMonth = () => {
+    setSelectedDate(
+      (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
+    );
+  };
+
+  const goToNextMonth = () => {
+    setSelectedDate(
+      (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
+    );
+  };
+
+  const resetToCurrentMonth = () => {
+    setSelectedDate(new Date());
+  };
+
+  const getSelectedMonthExpenses = () => {
+    const selectedMonth = selectedDate.getMonth();
+    const selectedYear = selectedDate.getFullYear();
+
     return expenses.filter((expense) => {
       const expenseDate = new Date(expense.date);
       return (
-        expenseDate.getMonth() === currentMonth &&
-        expenseDate.getFullYear() === currentYear
+        expenseDate.getMonth() === selectedMonth &&
+        expenseDate.getFullYear() === selectedYear
       );
     });
   };
- 
+
+  // Mantenemos getCurrentMonthExpenses para compatibilidad; ahora responde al mes seleccionado
+  const getCurrentMonthExpenses = () => {
+    return getSelectedMonthExpenses();
+  };
+
   const getMonthlyTotal = () => {
-    return getCurrentMonthExpenses().reduce(
+    return getSelectedMonthExpenses().reduce(
       (total, expense) => total + expense.amount,
       0
     );
   };
- 
+
+  const hasExpensesInMonth = (month: number, year: number) => {
+    return expenses.some((expense) => {
+      const expenseDate = new Date(expense.date);
+      return (
+        expenseDate.getMonth() === month &&
+        expenseDate.getFullYear() === year
+      );
+    });
+  };
+
   return (
     <ExpenseContext.Provider
       value={{
@@ -109,6 +168,14 @@ export const ExpenseProvider: React.FC<{ children: ReactNode }> = ({ children })
         deleteExpense,
         getMonthlyTotal,
         getCurrentMonthExpenses,
+        selectedDate,
+        setSelectedDate,
+        goToPreviousMonth,
+        goToNextMonth,
+        resetToCurrentMonth,
+        isCurrentMonth,
+        getSelectedMonthExpenses,
+        hasExpensesInMonth,
       }}
     >
       {children}

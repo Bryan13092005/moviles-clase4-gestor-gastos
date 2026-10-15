@@ -15,51 +15,64 @@ export const ExpensePhotoPicker: React.FC<ExpensePhotoPickerProps> = ({
 }) => {
   const [isPicking, setIsPicking] = useState(false);
 
-  const selectPhoto = async () => {
+  const saveSelectedPhoto = async (sourceUri: string) => {
+    const directory = FileSystem.documentDirectory;
+    if (!directory) {
+      throw new Error('No se encontró el directorio de almacenamiento de la aplicación.');
+    }
+
+    const photoDirectory = `${directory}expense-photos/`;
+    const directoryInfo = await FileSystem.getInfoAsync(photoDirectory);
+    if (!directoryInfo.exists) {
+      await FileSystem.makeDirectoryAsync(photoDirectory, { intermediates: true });
+    }
+
+    const extension = sourceUri.match(/\.(\w+)(?:[?#].*)?$/)?.[1] ?? 'jpg';
+    const savedUri = `${photoDirectory}${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.${extension}`;
+    await FileSystem.copyAsync({ from: sourceUri, to: savedUri });
+    onPhotoChange(savedUri);
+  };
+
+  const choosePhoto = async (source: 'camera' | 'gallery') => {
     setIsPicking(true);
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission =
+        source === 'camera'
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
           'Permiso requerido',
-          'Permite el acceso a tus fotos para adjuntar una imagen al gasto.'
+          source === 'camera'
+            ? 'Permite el acceso a la cámara para tomar una foto del gasto.'
+            : 'Permite el acceso a tus fotos para adjuntar una imagen al gasto.'
         );
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
+      const pickerOptions: ImagePicker.ImagePickerOptions = {
         mediaTypes: ['images'],
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
-      });
+      };
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync(pickerOptions)
+          : await ImagePicker.launchImageLibraryAsync(pickerOptions);
       if (result.canceled) return;
 
       const sourceUri = result.assets[0]?.uri;
       if (!sourceUri) {
-        throw new Error('El selector no devolvió una ruta de imagen.');
+        throw new Error('La cámara o galería no devolvió una ruta de imagen.');
       }
 
-      const directory = FileSystem.documentDirectory;
-      if (!directory) {
-        throw new Error('No se encontró el directorio de almacenamiento de la aplicación.');
-      }
-
-      const photoDirectory = `${directory}expense-photos/`;
-      const directoryInfo = await FileSystem.getInfoAsync(photoDirectory);
-      if (!directoryInfo.exists) {
-        await FileSystem.makeDirectoryAsync(photoDirectory, { intermediates: true });
-      }
-
-      const extension = sourceUri.match(/\.(\w+)(?:[?#].*)?$/)?.[1] ?? 'jpg';
-      const savedUri = `${photoDirectory}${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}.${extension}`;
-      await FileSystem.copyAsync({ from: sourceUri, to: savedUri });
-      onPhotoChange(savedUri);
+      await saveSelectedPhoto(sourceUri);
     } catch (error) {
-      console.error('No se pudo seleccionar o guardar la foto del gasto', error);
-      Alert.alert('Error', 'No se pudo guardar la foto. Intenta de nuevo.');
+      console.error('No se pudo capturar o guardar la foto del gasto', error);
+      Alert.alert('Error', 'No se pudo obtener o guardar la foto. Intenta de nuevo.');
     } finally {
       setIsPicking(false);
     }
@@ -78,24 +91,37 @@ export const ExpensePhotoPicker: React.FC<ExpensePhotoPickerProps> = ({
             <Text style={styles.removeText}>Quitar foto</Text>
           </TouchableOpacity>
         </View>
-      ) : (
+      ) : null}
+      <View style={styles.sourceButtons}>
         <TouchableOpacity
           accessibilityRole="button"
-          onPress={selectPhoto}
+          onPress={() => choosePhoto('camera')}
+          disabled={isPicking}
+          style={styles.selectButton}
+        >
+          <Text style={styles.selectText}>Tomar foto</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityRole="button"
+          onPress={() => choosePhoto('gallery')}
           disabled={isPicking}
           style={styles.selectButton}
         >
           <Text style={styles.selectText}>
-            {isPicking ? 'Cargando foto...' : 'Seleccionar foto'}
+            {isPicking ? 'Cargando...' : 'Elegir de galería'}
           </Text>
         </TouchableOpacity>
-      )}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    gap: Spacing.two,
+  },
+  sourceButtons: {
+    flexDirection: 'row',
     gap: Spacing.two,
   },
   previewContainer: {
@@ -110,6 +136,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.5)',
   },
   selectButton: {
+    flex: 1,
     alignItems: 'center',
     borderRadius: Spacing.two,
     borderWidth: 1,

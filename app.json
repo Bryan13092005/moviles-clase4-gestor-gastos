@@ -38,7 +38,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Permite que Gastos Poliestudiante acceda a tus fotos para adjuntarlas a un gasto."
+          "photosPermission": "Permite que Gastos Poliestudiante acceda a tus fotos para adjuntarlas a un gasto.",
+          "cameraPermission": "Permite que Gastos Poliestudiante use la cámara para tomar fotos de tus gastos."
         }
       ]
     ],
