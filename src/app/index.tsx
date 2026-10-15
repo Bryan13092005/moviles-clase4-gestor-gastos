@@ -8,12 +8,34 @@ import { ExpenseItem } from '@/components/ExpenseItem';
 import { AddExpenseModal } from '@/components/AddExpenseModal';
 import { useExpenses } from '@/context/ExpenseContext';
 import { LiquidGlassColors, Spacing } from '@/constants/theme';
+import { Expense } from '@/types/expense';
 
 // Pantalla principal: total del mes, lista de gastos y el boton + para agregar
 export default function HomeScreen() {
-  const { getCurrentMonthExpenses, isLoading } = useExpenses();
+  const { getCurrentMonthExpenses, isLoading, deleteExpense } = useExpenses();
   const [modalVisible, setModalVisible] = useState(false);
-  const expenses = getCurrentMonthExpenses();
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [sortByHighest, setSortByHighest] = useState(false);
+  const expenses = getCurrentMonthExpenses().sort((first, second) =>
+    sortByHighest
+      ? second.amount - first.amount || second.date.getTime() - first.date.getTime()
+      : second.date.getTime() - first.date.getTime()
+  );
+
+  const openNewExpense = () => {
+    setEditingExpense(null);
+    setModalVisible(true);
+  };
+
+  const openEditExpense = (expense: Expense) => {
+    setEditingExpense(expense);
+    setModalVisible(true);
+  };
+
+  const closeExpenseModal = () => {
+    setModalVisible(false);
+    setEditingExpense(null);
+  };
 
   return (
     <View style={styles.container}>
@@ -32,6 +54,16 @@ export default function HomeScreen() {
             <Text style={styles.appTitle}>Gastos Poliestudiante</Text>
 
             <MonthlyHeader />
+
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => setSortByHighest((current) => !current)}
+              style={styles.sortButton}
+            >
+              <Text style={styles.sortButtonText}>
+                {sortByHighest ? 'Orden: gastos más altos' : 'Orden: más recientes'}
+              </Text>
+            </TouchableOpacity>
 
             {/* Mientras se leen los datos guardados se muestra un indicador;
                 sin esto se veria un instante el mensaje de "no hay gastos" */}
@@ -53,7 +85,12 @@ export default function HomeScreen() {
                 data={expenses}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item, index }) => (
-                  <ExpenseItem expense={item} index={index} />
+                  <ExpenseItem
+                    expense={item}
+                    index={index}
+                    onEdit={openEditExpense}
+                    onDelete={deleteExpense}
+                  />
                 )}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
@@ -64,7 +101,7 @@ export default function HomeScreen() {
           {/* Boton + de la esquina */}
           <TouchableOpacity
             style={styles.fab}
-            onPress={() => setModalVisible(true)}
+            onPress={openNewExpense}
             activeOpacity={0.8}
           >
             <LinearGradient
@@ -79,7 +116,8 @@ export default function HomeScreen() {
 
           <AddExpenseModal
             visible={modalVisible}
-            onClose={() => setModalVisible(false)}
+            expense={editingExpense ?? undefined}
+            onClose={closeExpenseModal}
           />
         </SafeAreaView>
       </LinearGradient>
@@ -136,6 +174,21 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 100,
+  },
+  sortButton: {
+    alignSelf: 'flex-end',
+    marginBottom: Spacing.two,
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderColor: LiquidGlassColors.glassBorder,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  sortButtonText: {
+    color: LiquidGlassColors.primary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   emptyState: {
     flex: 1,

@@ -45,3 +45,19 @@ export async function insertExpense(db:SQLiteDatabase, expense:Expense):Promise<
         expense.photoUri??null
     );
 }
+
+export async function updateExpense(db: SQLiteDatabase, expense: Expense): Promise<void> {
+    await db.runAsync(
+        'UPDATE expenses SET amount = ?, category = ?, date = ?, description = ?, photo_uri = ? WHERE id = ?',
+        expense.amount,
+        expense.category,
+        expense.date.toISOString(),
+        expense.description ?? null,
+        expense.photoUri ?? null,
+        expense.id
+    );
+}
+
+export async function deleteExpense(db: SQLiteDatabase, id: string): Promise<void> {
+    await db.runAsync('DELETE FROM expenses WHERE id = ?', id);
+}

@@ -10,6 +10,15 @@ Una aplicación móvil moderna para Android desarrollada con **Expo (React Nativ
 >  **Este proyecto es la base para un taller progresivo de desarrollo móvil**. 
 Los alumnos comenzarán con esta versión base (sin persistencia de datos) y avanzarán implementando AsyncStorage, SQLite 
 ---
+
+## Funcionalidades
+
+- Registrar, editar y eliminar gastos; confirmar antes de eliminar.
+- Ordenar los gastos del mes por monto más alto o por fecha más reciente.
+- Validar montos positivos con hasta dos decimales y categorías obligatorias.
+- Aceptar descripciones opcionales de hasta 400 caracteres, con letras, números y espacios.
+- Adjuntar una foto a un gasto y elegir su fecha.
+
 ##  Instalación y Configuración
 
 ### Prerrequisitos

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Expense, CATEGORY_ICONS } from '@/types/expense';
@@ -9,10 +9,17 @@ import { LiquidGlassColors, Spacing } from '@/constants/theme';
 interface ExpenseItemProps {
   expense: Expense;
   index: number; // sirve para que cada fila entre un poquito despues de la anterior
+  onEdit: (expense: Expense) => void;
+  onDelete: (id: string) => Promise<void>;
 }
 
 // Una fila de la lista de gastos
-export const ExpenseItem: React.FC<ExpenseItemProps> = ({ expense, index }) => {
+export const ExpenseItem: React.FC<ExpenseItemProps> = ({
+  expense,
+  index,
+  onEdit,
+  onDelete,
+}) => {
   // Queda algo como "15 oct"
   const formattedDate = new Date(expense.date).toLocaleDateString('es-ES', {
     day: '2-digit',
@@ -25,6 +32,26 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({ expense, index }) => {
     currency: 'USD',
     minimumFractionDigits: 2,
   }).format(expense.amount);
+
+  const confirmDelete = () => {
+    Alert.alert(
+      'Eliminar gasto',
+      '¿Seguro que deseas eliminar este gasto? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            void onDelete(expense.id).catch((error: unknown) => {
+              console.error('Error al eliminar el gasto', error);
+              Alert.alert('Error', 'No se pudo eliminar el gasto. Intenta de nuevo.');
+            });
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <Animated.View
@@ -64,6 +91,22 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({ expense, index }) => {
             <Text style={styles.amount}>{formattedAmount}</Text>
             <Text style={styles.date}>{formattedDate}</Text>
           </View>
+        </View>
+        <View style={styles.actions}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={() => onEdit(expense)}
+            style={styles.actionButton}
+          >
+            <Text style={styles.editText}>Editar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityRole="button"
+            onPress={confirmDelete}
+            style={styles.actionButton}
+          >
+            <Text style={styles.deleteText}>Eliminar</Text>
+          </TouchableOpacity>
         </View>
       </GlassCard>
     </Animated.View>
@@ -128,5 +171,28 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 12,
     color: LiquidGlassColors.glassTextSecondary,
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: Spacing.two,
+    marginTop: Spacing.two,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: LiquidGlassColors.glassBorder,
+    paddingTop: Spacing.two,
+  },
+  actionButton: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+  },
+  editText: {
+    color: LiquidGlassColors.primary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  deleteText: {
+    color: LiquidGlassColors.secondary,
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
