@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Expense, CATEGORY_ICONS } from '@/types/expense';
@@ -50,6 +50,13 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({ expense, index }) => {
                 <Text style={styles.description} numberOfLines={1}>
                   {expense.description}
                 </Text>
+              )}
+              {expense.photoUri && (
+                <Image
+                  accessibilityLabel="Foto adjunta al gasto"
+                  source={{ uri: expense.photoUri }}
+                  style={styles.photo}
+                />
               )}
             </View>
           </View>
@@ -102,6 +109,12 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 13,
     color: LiquidGlassColors.glassTextSecondary,
+  },
+  photo: {
+    width: 48,
+    height: 36,
+    borderRadius: Spacing.one,
+    marginTop: Spacing.one,
   },
   rightSection: {
     alignItems: 'flex-end',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   StyleSheet,
@@ -11,12 +11,14 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Category, CATEGORIES, CATEGORY_ICONS } from '@/types/expense';
 import { LiquidGlassColors, Spacing } from '@/constants/theme';
 import { useExpenses } from '@/context/ExpenseContext';
+import { ExpensePhotoPicker } from '@/components/ExpensePhotoPicker';
 
 interface AddExpenseModalProps {
   visible: boolean;
@@ -34,6 +36,18 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState<Category | null>(null);
   const [description, setDescription] = useState('');
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (visible) setDate(new Date());
+  }, [visible]);
+
+  const handleDateChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (event.type === 'set' && selectedDate) setDate(selectedDate);
+  };
 
   // async porque ahora hay que esperar a que el gasto se guarde en el telefono
   const handleSubmit = async () => {
@@ -43,8 +57,9 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       await addExpense({
         amount: parseFloat(amount),
         category,
-        date: new Date(),
+        date,
         description: description.trim() || undefined,
+        photoUri,
       });
     } catch (error) {
       // Si no se pudo guardar, se avisa y el modal queda abierto con los datos
@@ -57,6 +72,9 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     setAmount('');
     setCategory(null);
     setDescription('');
+    setDate(new Date());
+    setShowDatePicker(false);
+    setPhotoUri(undefined);
     onClose();
   };
 
@@ -66,6 +84,9 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     setAmount('');
     setCategory(null);
     setDescription('');
+    setDate(new Date());
+    setShowDatePicker(false);
+    setPhotoUri(undefined);
     onClose();
   };
 
@@ -169,6 +190,42 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                 </View>
 
                 <View style={styles.inputSection}>
+                  <Text style={styles.label}>Fecha</Text>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => setShowDatePicker((visible) => !visible)}
+                    style={styles.dateButton}
+                  >
+                    <Text style={styles.dateButtonText}>
+                      {date.toLocaleDateString('es-ES', {
+                        day: '2-digit',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </Text>
+                    <Text style={styles.changeDateText}>Cambiar</Text>
+                  </TouchableOpacity>
+                  {showDatePicker && (
+                    <View style={styles.datePickerContainer}>
+                      <DateTimePicker
+                        value={date}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={handleDateChange}
+                      />
+                      {Platform.OS === 'ios' && (
+                        <TouchableOpacity
+                          onPress={() => setShowDatePicker(false)}
+                          style={styles.dateDoneButton}
+                        >
+                          <Text style={styles.changeDateText}>Listo</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.inputSection}>
                   <Text style={styles.label}>Descripción (opcional)</Text>
                   <TextInput
                     style={[styles.input, styles.descriptionInput]}
@@ -177,6 +234,14 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     placeholder="Ej: Almuerzo, transporte a la universidad..."
                     placeholderTextColor={LiquidGlassColors.glassTextSecondary}
                     multiline
+                  />
+                </View>
+
+                <View style={styles.inputSection}>
+                  <Text style={styles.label}>Foto (opcional)</Text>
+                  <ExpensePhotoPicker
+                    photoUri={photoUri}
+                    onPhotoChange={setPhotoUri}
                   />
                 </View>
 
@@ -301,6 +366,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     minHeight: 80,
     textAlignVertical: 'top',
+  },
+  dateButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderColor: LiquidGlassColors.glassBorder,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  dateButtonText: {
+    color: LiquidGlassColors.glassText,
+    fontSize: 16,
+  },
+  changeDateText: {
+    color: LiquidGlassColors.primary,
+    fontWeight: '600',
+  },
+  datePickerContainer: {
+    marginTop: Spacing.two,
+    alignItems: 'center',
+  },
+  dateDoneButton: {
+    alignSelf: 'flex-end',
+    padding: Spacing.two,
   },
   categoriesScroll: {
     marginHorizontal: -Spacing.two,

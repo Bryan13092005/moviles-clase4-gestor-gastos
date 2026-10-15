@@ -33,7 +33,14 @@
           "imageWidth": 76
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permite que Gastos Poliestudiante acceda a tus fotos para adjuntarlas a un gasto."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

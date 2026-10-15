@@ -9,6 +9,7 @@ interface ExpenseRow {
     category: string;
     date: string;
     description: string | null;
+    photo_uri: string | null;
 }
 
 //convierte una felia de la tbla a objeto
@@ -19,6 +20,7 @@ function rowToExpense(row:ExpenseRow):Expense {
         category:row.category as Category,
         date: new Date(row.date),
         description: row.description ?? undefined,
+        photoUri: row.photo_uri ?? undefined,
     }
 }
 
@@ -26,7 +28,7 @@ function rowToExpense(row:ExpenseRow):Expense {
 export async function getAllExpenses(db: SQLiteDatabase): Promise<Expense[]> {
 // getAllAsync ejecuta un SELECT y devuelve un arreglo con todas las filas
 const rows = await db.getAllAsync<ExpenseRow>(
-    'SELECT id, amount, category, date, description FROM expenses ORDER BY date DESC'
+    'SELECT id, amount, category, date, description, photo_uri FROM expenses ORDER BY date DESC'
     );
     return rows.map(rowToExpense);
 }
@@ -34,11 +36,12 @@ const rows = await db.getAllAsync<ExpenseRow>(
 //inserta UN gasto
 export async function insertExpense(db:SQLiteDatabase, expense:Expense):Promise<void>{
     await db.runAsync(
-        'INSERT INTO expenses (id,amount,category,date,description) VALUES(?,?,?,?,?)',
+        'INSERT INTO expenses (id,amount,category,date,description,photo_uri) VALUES(?,?,?,?,?,?)',
         expense.id,
         expense.amount,
         expense.category,
         expense.date.toISOString(),
-        expense.description??null
+        expense.description??null,
+        expense.photoUri??null
     );
 }

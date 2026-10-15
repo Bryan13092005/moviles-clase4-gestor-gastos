@@ -51,6 +51,8 @@ npx expo install expo-image
 npx expo install expo-symbols
 npx expo install expo-font
 npx expo install @expo/ui
+npx expo install expo-image-picker expo-file-system
+npx expo install @react-native-community/datetimepicker
 ```
 
 **Animaciones, gestos y navegación:**
@@ -80,6 +82,8 @@ npx expo install react-native-web
 | `expo-linear-gradient` | Gradientes nativos |
 | `expo-glass-effect` | Efecto de cristal nativo |
 | `expo-image`, `expo-symbols`, `expo-font` | Imágenes, iconos y fuentes |
+| `expo-image-picker`, `expo-file-system` | Selección y almacenamiento local de fotos de gastos |
+| `@react-native-community/datetimepicker` | Selección de la fecha del gasto |
 | `@expo/ui` | Componentes nativos de Expo |
 | `react-native-reanimated`, `react-native-worklets` | Animaciones fluidas |
 | `react-native-gesture-handler` | Gestos táctiles |
